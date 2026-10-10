@@ -4,3 +4,4 @@ env/
 __pycache__/
 .env
 other/
+data_karyawan.csv
