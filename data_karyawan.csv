@@ -1,0 +1,4 @@
+employee_code,device_pin,full_name,nick_name,branch,department,job_title,work_location_type,employment_status,join_date,gender,phone_number,email,identity_number,identity_address
+EMP001,101,Budi Santoso,Budi,Pusat Jakarta,IT & Engineering,Software Engineer,ON_SITE,PERMANENT,2024-01-15,MALE,081234567890,budi@example.com,3171011234560001,Jl. Merdeka No. 10, Jakarta Pusat
+EMP002,102,Siti Aminah,Siti,Cabang Bandung,Finance,Finance Officer,HYBRID,PERMANENT,2024-03-01,FEMALE,081234567891,siti@example.com,3273012345670002,Jl. Asia Afrika No. 45, Bandung
+EMP003,103,Ahmad Fauzi,Fauzi,Pusat Jakarta,HRGA,HR Specialist,ON_SITE,CONTRACT,2025-01-10,MALE,081234567892,fauzi@example.com,3171019876540003,Jl. Gatot Subroto No. 88, Jakarta Selatan

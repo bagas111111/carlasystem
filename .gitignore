@@ -1,0 +1,6 @@
+# Folder dan file khusus Python & Proyekmu
+venv/
+env/
+__pycache__/
+.env
+other/
