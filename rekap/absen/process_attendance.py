@@ -71,23 +71,38 @@ def process_attendance_recap(
   df_leaves = pd.read_csv(leaves_file)
   df_req = pd.read_csv(requests_file)
 
-  df_emp["device_pin"] = df_emp["device_pin"].astype(str).str.strip()
+  # Normalisasi kolom PIN karyawan
+  emp_pin_col = "device_pin" if "device_pin" in df_emp.columns else "pin"
+  df_emp[emp_pin_col] = df_emp[emp_pin_col].astype(str).str.strip()
 
+  # Load & Clean Ceklok Mentah berdasarkan Config Mapping
   df_raw = pd.read_csv(raw_checkin_file)
-  pin_col_name = "device_pin" if "device_pin" in df_raw.columns else "pin"
+  mapping = CONFIG.get("raw_columns_mapping", {})
+  
+  # Deteksi nama kolom secara dinamis (prioritas config, fallback ke pencarian umum)
+  col_pin = mapping.get("pin_col") if mapping.get("pin_col") in df_raw.columns else ("device_pin" if "device_pin" in df_raw.columns else "pin")
+  col_time = mapping.get("timestamp_col") if mapping.get("timestamp_col") in df_raw.columns else ("timestamp" if "timestamp" in df_raw.columns else "datetime")
 
-  df_raw[pin_col_name] = df_raw[pin_col_name].astype(str).str.strip()
-  df_raw["timestamp"] = pd.to_datetime(df_raw["timestamp"])
+  df_raw[col_pin] = df_raw[col_pin].astype(str).str.strip()
+  df_raw["timestamp_dt"] = pd.to_datetime(df_raw[col_time])
 
   cutoff_hour = CONFIG["cut_off_daily_hour"]
-  df_raw["shift_date"] = df_raw["timestamp"].apply(
+  # Tentukan Tanggal Shift Berdasarkan Cut-Off Daily
+  df_raw["shift_date"] = df_raw["timestamp_dt"].apply(
       lambda ts: (
           ts.date() - datetime.timedelta(days=1)
           if ts.hour < cutoff_hour
           else ts.date()
       )
   )
-  df_raw["time_str"] = df_raw["timestamp"].dt.strftime("%H:%M")
+  df_raw["time_str"] = df_raw["timestamp_dt"].dt.strftime("%H:%M")
+
+  # Ringkas data log harian murni: ambil scan paling awal (min) sebagai Masuk dan paling akhir (max) sebagai Pulang
+  df_scan = (
+      df_raw.groupby([col_pin, "shift_date"])
+      .agg(first_in=("time_str", "min"), last_out=("time_str", "max"), total_logs=("time_str", "count"))
+      .reset_index()
+  )
 
   results = []
   shift_info = CONFIG["shifts"]["NORMAL"]
@@ -99,49 +114,38 @@ def process_attendance_recap(
   all_dates = sorted(df_raw["shift_date"].unique())
 
   for _, emp in df_emp.iterrows():
-    pin = str(emp["device_pin"])
+    pin = str(emp[emp_pin_col])
     nip = str(emp["employee_code"]).strip()
     name = emp["full_name"]
     branch = emp["branch"]
     dept = emp["department"]
 
-    emp_raw = df_raw[df_raw[pin_col_name] == pin]
+    emp_scans = df_scan[df_scan[col_pin] == pin]
 
     for date_obj in all_dates:
       date_str = str(date_obj)
-      day_logs = emp_raw[emp_raw["shift_date"] == date_obj]
+      matched_scan = emp_scans[emp_scans["shift_date"] == date_obj]
 
       cin = "-"
       cout = "-"
       raw_status = "HADIR"
       notes = []
 
-      # 1. Evaluasi Log Mesin Absensi
-      if day_logs.empty:
+      # 1. Evaluasi Log Mesin Absensi Riil (Tanpa status IN/OUT)
+      if matched_scan.empty:
         cin = "-"
         cout = "-"
         raw_status = "TIDAK ABSEN"
       else:
-        if "status" in day_logs.columns:
-          in_logs = day_logs[day_logs["status"].str.upper() == "IN"]
-          out_logs = day_logs[day_logs["status"].str.upper() == "OUT"]
-          
-          if not in_logs.empty:
-            cin = in_logs["time_str"].min()
-          if not out_logs.empty:
-            cout = out_logs["time_str"].max()
-            
-          if cin == "-" and cout == "-" and not day_logs.empty:
-            cin = day_logs["time_str"].min()
-            cout = day_logs["time_str"].max() if len(day_logs) > 1 else "-"
-        else:
-          cin = day_logs["time_str"].min()
-          cout = day_logs["time_str"].max() if len(day_logs) > 1 else "-"
+        scan_row = matched_scan.iloc[0]
+        cin = scan_row["first_in"]
+        # Jika hanya ada 1 kali scan dalam sehari, anggap itu scan masuk saja atau pulang tergantung jamnya, tapi amannya set "-" untuk pulang atau gunakan logika standar
+        cout = scan_row["last_out"] if scan_row["total_logs"] > 1 else "-"
 
         if cin == "-" or cout == "-":
           raw_status = "TIDAK ABSEN"
 
-      # 2. Cek Keterlambatan Fisik Murni (jika tidak ada izin khusus)
+      # 2. Cek Keterlambatan Fisik Murni
       if raw_status == "HADIR":
         cin_mins = parse_time_to_minutes(cin)
         if cin_mins and cin_mins > late_threshold_mins:
@@ -156,7 +160,6 @@ def process_attendance_recap(
       ]
 
       if not matched_leave.empty:
-        # Jika ada beberapa pengajuan, ambil berdasarkan submit terbaru (sort descending)
         if "Waktu Submit" in matched_leave.columns:
           matched_leave = matched_leave.sort_values(by="Waktu Submit", ascending=False)
         
@@ -178,7 +181,6 @@ def process_attendance_recap(
           candidate_status = resolve_status(candidate_status, l_type)
 
         elif l_type == "IZIN_TERLAMBAT":
-          # Jika terdaftar Izin Terlambat, pastikan statusnya menjadi IZIN_TERLAMBAT (bukan TERLAMBAT biasa)
           cin_m = parse_time_to_minutes(cin)
           l_start_m = parse_time_to_minutes(l_start)
           leave_tol = CONFIG["leave_tolerance_min"]
@@ -203,7 +205,7 @@ def process_attendance_recap(
 
       final_status = candidate_status
 
-      # 5. Hitung Lembur (Hanya jika status aktif kerja)
+      # 5. Hitung Lembur
       overtime_hours = (
           calculate_overtime(cout, shift_end) if final_status in ["HADIR", "TERLAMBAT", "IZIN_TERLAMBAT", "DINAS_LUAR"] else 0.0
       )
@@ -285,7 +287,6 @@ def export_to_professional_excel(df, filename="Hasil_Rekap_Absensi.xlsx"):
         cell.alignment = align_center
       elif col_name == "Status Kehadiran":
         cell.alignment = align_center
-        # Font merah HANYA untuk Terlambat murni & Tidak Absen (Izin terlambat tidak merah)
         if status_val == "TERLAMBAT":
           cell.font = red_font
         elif "TIDAK ABSEN" in status_val:

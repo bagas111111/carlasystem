@@ -10,6 +10,10 @@
   "leave_tolerance_min": 30,
   "overtime_min_hours": 1.0,
   "overtime_step_hours": 0.5,
+  "raw_columns_mapping": {
+    "pin_col": "pin",
+    "timestamp_col": "timestamp"
+  },
   "status_priority": [
     "TERLAMBAT MENDADAK",
     "TIDAK ABSEN",
