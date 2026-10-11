@@ -5,3 +5,14 @@ __pycache__/
 .env
 other/
 data_karyawan.csv
+rekap/absen/raw_checkin.csv
+rekap/absen/Hasil_Rekap_Absensi.xlsx
+rekap/absen/data_leave.csv
+rekap/absen/data_karyawan.csv
+data_karyawan.csv
+
+# SQLite Database dan file sementaranya
+*.db
+*.db-wal
+*.db-shm
+*.db-info
