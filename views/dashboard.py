@@ -51,14 +51,49 @@ def render_dashboard():
   st.divider()
 
   st.subheader("⚡ Pintasan Menu Utama")
-  c1, c2, c3 = st.columns(3)
 
-  with c1:
-    st.info("📋 **Daftar Karyawan**\n\nLihat seluruh data lengkap pegawai.")
-  with c2:
-    st.success("➕ **Tambah Karyawan**\n\nInput data pegawai baru via web.")
-  with c3:
-    st.warning("👤 **Profil & Karier**\n\nCek riwayat mutasi dan promosi.")
+  # Ambil menu pintasan dari database khusus company_id ini
+  try:
+    df_menus = pd.read_sql(
+        f"""
+            SELECT menu_group, menu_title, menu_url, image_url 
+            FROM hris_company_menus 
+            WHERE company_id = '{company_id}' 
+            ORDER BY menu_group ASC, sort_order ASC
+        """,
+        con,
+    )
+  except Exception:
+    df_menus = pd.DataFrame()
+
+  if not df_menus.empty:
+    # Tampilkan menu dalam bentuk grid kolom (3 kolom per baris) menggunakan kontainer natif Streamlit
+    cols = st.columns(3)
+    for idx, row in df_menus.iterrows():
+      col_target = cols[idx % 3]
+      with col_target:
+        with st.container(border=True):
+          # Jika ada image_url, tampilkan sebagai banner lebar di atas kartu
+          if row["image_url"] and str(row["image_url"]).strip() != "":
+            st.markdown(
+                f"""
+                    <div style="margin: -15px -15px 12px -15px; overflow: hidden; border-top-left-radius: 8px; border-top-right-radius: 8px; height: 120px;">
+                        <img src="{row['image_url']}" style="width: 100%; height: 100%; object-fit: cover;" />
+                    </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+          st.caption(f"📂 {row['menu_group']}")
+          st.markdown(f"**{row['menu_title']}**")
+          
+          # Tombol tautan resmi Streamlit
+          st.link_button("Buka Tautan 🚀", row["menu_url"], use_container_width=True)
+  else:
+    st.info(
+        "💡 Belum ada pintasan menu yang diatur untuk perusahaan ini. Silakan"
+        " buat melalui halaman Kelola Menu."
+    )
 
   st.divider()
   st.markdown(

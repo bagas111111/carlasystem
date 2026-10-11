@@ -8,8 +8,11 @@ from views.employees import render_employees
 from views.leave_management import render_leave_management
 from views.leave_quota_management import (
     render_leave_quota_management,
-)  # <--- Import Manajemen Kuota & Cuti Panjang
+)
 from views.login import render_login
+from views.menu_management import (
+    render_menu_management,
+)  # <--- Import Manajemen Pintasan Menu
 from views.profile import render_profile
 from views.users_management import render_users_management
 
@@ -29,13 +32,14 @@ else:
   # Susunan Menu Berdasarkan Hak Akses
   menu_options = [
       "Dashboard Utama",
+      "Kelola Menu & Pintasan",  # <--- Menu Baru untuk Shortcut
       "Data Karyawan",
       "Tambah Karyawan Baru",
       "Edit Data Karyawan",
       "Detail & Riwayat Karier",
       "Manajemen Karier",
       "Manajemen Izin & Cuti",
-      "Kuota & Cuti Panjang",  # <--- Menu Baru
+      "Kuota & Cuti Panjang",
   ]
 
   # Jika user adalah SUPER_ADMIN, berikan akses penuh ke manajemen perusahaan dan user
@@ -53,6 +57,8 @@ else:
   # Routing Halaman
   if menu == "Dashboard Utama":
     render_dashboard()
+  elif menu == "Kelola Menu & Pintasan":  # <--- Routing Menu Baru
+    render_menu_management()
   elif menu == "Data Karyawan":
     render_employees()
   elif menu == "Tambah Karyawan Baru":
@@ -65,7 +71,7 @@ else:
     render_career_management()
   elif menu == "Manajemen Izin & Cuti":
     render_leave_management()
-  elif menu == "Kuota & Cuti Panjang":  # <--- Routing Baru
+  elif menu == "Kuota & Cuti Panjang":
     render_leave_quota_management()
   elif menu == "Manajemen Perusahaan":
     render_company_management()
