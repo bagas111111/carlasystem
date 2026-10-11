@@ -1,0 +1,25 @@
+{
+  "cut_off_daily_hour": 5,
+  "shifts": {
+    "NORMAL": {
+      "start": "08:00",
+      "end": "17:00",
+      "late_tolerance_minutes": 5
+    }
+  },
+  "leave_tolerance_min": 30,
+  "overtime_min_hours": 1.0,
+  "overtime_step_hours": 0.5,
+  "status_priority": [
+    "TERLAMBAT MENDADAK",
+    "TIDAK ABSEN",
+    "IZIN TERLAMBAT",
+    "PULANG AWAL",
+    "IZIN KELUAR SEMENTARA",
+    "SAKIT",
+    "IZIN",
+    "CUTI",
+    "DINAS LUAR",
+    "HADIR"
+  ]
+}

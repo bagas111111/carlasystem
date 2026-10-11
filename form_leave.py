@@ -106,7 +106,7 @@ def render_form_leave():
               "TERLAMBAT_MENDADAK",
               "DINAS_LUAR",
               "CUTI",
-              "IJIN_KHUSUS",
+              "IZIN_KHUSUS",
           ],
       )
       leave_date = st.date_input("Tanggal Pengajuan *Wajib")
