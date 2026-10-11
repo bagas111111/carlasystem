@@ -47,7 +47,7 @@ def render_form_leave():
   st.success(f"🏢 Perusahaan: **{comp_name}**")
   st.divider()
 
-  # JIKA SUDAH DISUBMIT: Tampilkan layar selesai (ala Google Form) & kunci form
+  # JIKA SUDAH DISUBMIT: Tampilkan layar selesai & kunci form
   if st.session_state["form_submitted"]:
     st.balloons()
     st.success("🎉 **Pengajuan Berhasil Dikirim!**")
@@ -60,24 +60,24 @@ def render_form_leave():
       st.rerun()
     return
 
-  # Ambil Daftar Karyawan HANYA untuk Company ID tersebut secara fresh dari DB
+  # Ambil Daftar Karyawan HANYA yang berstatus 'ACTIVE' untuk Company ID tersebut
   df_emp = pd.read_sql(
-      f"SELECT id, full_name, employee_code, department FROM hris_employees WHERE company_id = '{company_id}'",
+      f"SELECT id, full_name, employee_code, department FROM hris_employees WHERE company_id = '{company_id}' AND status = 'ACTIVE'",
       con,
   )
 
   if df_emp.empty:
     st.warning(
-        "⚠️ Belum ada data karyawan terdaftar untuk perusahaan ini. Silakan"
+        "⚠️ Belum ada data karyawan aktif terdaftar untuk perusahaan ini. Silakan"
         " hubungi HR Anda."
     )
     return
 
   emp_options = {
-      f"{row['full_name']} (NIP: {row['employee_code']} - Dept: {row['department']})": row[
+      f"{row['full_name']} (NIP: {row['employee_code']} | Dept: {row['department']})": row[
           "id"
       ]
-      for index, row in df_emp.iterrows()
+      for _, row in df_emp.iterrows()
   }
 
   with st.form("form_leave_standalone"):
@@ -112,7 +112,6 @@ def render_form_leave():
       leave_date = st.date_input("Tanggal Pengajuan *Wajib")
 
     with col2:
-      # Menggunakan st.time_input agar format jam wajib valid (HH:MM) dan bersih dari karakter ngawur
       start_time_val = st.time_input(
           "Jam Mulai *Wajib", value=datetime.time(8, 0)
       )
@@ -137,7 +136,6 @@ def render_form_leave():
           leave_id = str(uuid.uuid4())
           date_str = leave_date.strftime("%Y-%m-%d") if leave_date else None
 
-          # Ubah objek time menjadi string standar format 'HH:MM'
           start_str = (
               start_time_val.strftime("%H:%M") if start_time_val else None
           )

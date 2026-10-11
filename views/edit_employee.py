@@ -1,4 +1,3 @@
-import datetime
 from database import get_connection
 import pandas as pd
 import streamlit as st
@@ -42,17 +41,6 @@ def render_edit_employee():
     return
 
   emp = df_emp.iloc[0]
-
-  def parse_date(val, default_date=datetime.date(1990, 1, 1)):
-    if pd.notnull(val) and val != "" and val != "None" and val is not None:
-      try:
-        return pd.to_datetime(val).date()
-      except Exception:
-        return default_date
-    return default_date
-
-  min_general_date = datetime.date(1970, 1, 1)
-  max_general_date = datetime.date(2050, 12, 31)
 
   with st.form(f"form_edit_employee_{selected_id}"):
     tab1, tab2, tab3 = st.tabs(
@@ -124,30 +112,58 @@ def render_edit_employee():
             index=statuses.index(curr_stat),
         )
 
-        join_date = st.date_input(
-            "Tanggal Bergabung",
-            value=parse_date(emp.get("join_date")),
-            min_value=min_general_date,
-            max_value=max_general_date,
+        # Menggunakan text_input agar fleksibel untuk tanggal-tanggal lampau
+        join_date = st.text_input(
+            "Tanggal Bergabung (Format: YYYY-MM-DD)",
+            value=str(emp.get("join_date") or ""),
         )
-        contract_end_date = st.date_input(
-            "Akhir Kontrak",
-            value=parse_date(emp.get("contract_end_date")),
-            min_value=min_general_date,
-            max_value=max_general_date,
+        contract_end_date = st.text_input(
+            "Akhir Kontrak (Opsional, Format: YYYY-MM-DD)",
+            value=str(emp.get("contract_end_date") or ""),
         )
-        resign_date = st.date_input(
-            "Tanggal Resign",
-            value=parse_date(emp.get("resign_date")),
-            min_value=min_general_date,
-            max_value=max_general_date,
+        resign_date = st.text_input(
+            "Tanggal Resign / Keluar (Format: YYYY-MM-DD)",
+            value=str(emp.get("resign_date") or ""),
         )
 
-        exit_type = st.text_input(
-            "Tipe Keluar (Exit Type)", value=str(emp.get("exit_type") or "")
+        # Dinamis Exit Type berdasarkan Status Sistem
+        if status == "SUSPENDED":
+          exit_options = {
+              "Skorsing Disiplin / Pelanggaran Aturan": "DISCIPLINARY_SUSPENSION",
+              "Skorsing Proses Investigasi / Pemeriksaan": "INVESTIGATION_SUSPENSION",
+              "Lainnya": "OTHER",
+          }
+        else:
+          exit_options = {
+              "Sukarela (Voluntary Resignation)": "VOLUNTARY",
+              "Dihentikan Perusahaan (Involuntary)": "INVOLUNTARY",
+              "Habis Masa Kontrak": "END_OF_CONTRACT",
+              "Pensiun": "RETIREMENT",
+              "Meninggal Dunia": "DECEASED",
+              "Lainnya": "OTHER",
+          }
+
+        curr_exit = str(emp.get("exit_type") or "VOLUNTARY")
+        # Cari label yang sesuai dengan value di database, default ke indeks 0 jika tidak ketemu
+        exit_keys = list(exit_options.keys())
+        exit_vals = list(exit_options.values())
+        default_exit_idx = (
+            exit_vals.index(curr_exit) if curr_exit in exit_vals else 0
         )
+
+        selected_exit_label = st.selectbox(
+            (
+                "Tipe Penangguhan / Skorsing"
+                if status == "SUSPENDED"
+                else "Tipe Keluar (Exit Type)"
+            ),
+            exit_keys,
+            index=default_exit_idx,
+        )
+        exit_type = exit_options[selected_exit_label]
+
         exit_reason = st.text_input(
-            "Alasan Keluar (Exit Reason)",
+            "Alasan Keluar / Keterangan",
             value=str(emp.get("exit_reason") or ""),
         )
 
@@ -200,12 +216,9 @@ def render_edit_employee():
         place_of_birth = st.text_input(
             "Tempat Lahir", value=str(emp.get("place_of_birth") or "")
         )
-
-        raw_dob = emp.get("date_of_birth")
-        str_dob = str(raw_dob) if pd.notnull(raw_dob) and raw_dob != "None" else ""
         date_of_birth_input = st.text_input(
             "Tanggal Lahir (Format: YYYY-MM-DD)",
-            value=str_dob,
+            value=str(emp.get("date_of_birth") or ""),
             placeholder="1990-08-17",
         )
 
@@ -218,18 +231,27 @@ def render_edit_employee():
             "Alamat Email", value=str(emp.get("email") or "")
         )
 
-        id_types = ["KTP", "PASSPORT", "SIM"]
-        curr_idt = (
-            emp.get("identity_type")
-            if emp.get("identity_type") in id_types
-            else "KTP"
-        )
-        identity_type = st.selectbox(
-            "Tipe Identitas", id_types, index=id_types.index(curr_idt)
+        identity_options = {
+            "KTP (NIK)": "KTP",
+            "Paspor": "PASSPORT",
+            "KITAS / KITAP": "KITAS",
+            "KTA (Kartu Tanda Anggota)": "KTA",
+            "Lainnya": "OTHER",
+        }
+        curr_idt = str(emp.get("identity_type") or "KTP")
+        id_keys = list(identity_options.keys())
+        id_vals = list(identity_options.values())
+        default_id_idx = (
+            id_vals.index(curr_idt) if curr_idt in id_vals else 0
         )
 
+        selected_id_label = st.selectbox(
+            "Tipe Identitas", id_keys, index=default_id_idx
+        )
+        identity_type = identity_options[selected_id_label]
+
         identity_number = st.text_input(
-            "Nomor Identitas / KTP",
+            "Nomor Identitas / Nomor Kartu",
             value=str(emp.get("identity_number") or ""),
         )
         family_card_number = st.text_input(
@@ -296,16 +318,10 @@ def render_edit_employee():
         )
       else:
         try:
-          join_str = join_date.strftime("%Y-%m-%d") if join_date else None
-          contract_end_str = (
-              contract_end_date.strftime("%Y-%m-%d")
-              if contract_end_date
-              else None
-          )
-          resign_str = resign_date.strftime("%Y-%m-%d") if resign_date else None
-          dob_str = (
-              date_of_birth_input.strip() if date_of_birth_input else None
-          )
+          join_str = join_date.strip() if join_date and join_date.strip() else None
+          contract_end_str = contract_end_date.strip() if contract_end_date and contract_end_date.strip() else None
+          resign_str = resign_date.strip() if resign_date and resign_date.strip() else None
+          dob_str = date_of_birth_input.strip() if date_of_birth_input and date_of_birth_input.strip() else None
 
           con.execute(
               """
@@ -365,6 +381,6 @@ def render_edit_employee():
           st.success(
               f"🎉 Data master karyawan **{full_name}** berhasil diperbarui!"
           )
-          st.rerun()  # Auto reload setelah update
+          st.rerun()
         except Exception as e:
           st.error(f"❌ Gagal memperbarui data karyawan: {str(e)}")

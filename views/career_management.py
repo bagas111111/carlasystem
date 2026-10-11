@@ -4,13 +4,63 @@ import pandas as pd
 import streamlit as st
 
 
+def sync_employee_profile(con, employee_id):
+  """Fungsi helper untuk menyinkronkan profil utama hris_employees
+
+  berdasarkan riwayat karier yang aktif (is_current = 1 dan created_at terbaru).
+  """
+  try:
+    df_curr = pd.read_sql(
+        f"""
+            SELECT job_title, department, employment_status, end_date 
+            FROM hris_employee_careers 
+            WHERE employee_id = '{employee_id}' AND is_current = 1 
+            ORDER BY created_at DESC, start_date DESC 
+            LIMIT 1
+        """,
+        con,
+    )
+
+    if not df_curr.empty:
+      row = df_curr.iloc[0]
+      j_title = row["job_title"]
+      dept = row["department"]
+      emp_status = row["employment_status"]
+      end_date = row["end_date"]
+
+      if (
+          end_date
+          and str(end_date).strip() not in ["", "nan", "None", "NaT", "NAT"]
+      ):
+        con.execute(
+            """
+                UPDATE hris_employees 
+                SET job_title = ?, department = ?, employment_status = ?, contract_end_date = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """,
+            (j_title, dept, emp_status, end_date, employee_id),
+        )
+      else:
+        con.execute(
+            """
+                UPDATE hris_employees 
+                SET job_title = ?, department = ?, employment_status = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """,
+            (j_title, dept, emp_status, employee_id),
+        )
+      con.commit()
+  except Exception as e:
+    print(f"Gagal sinkronisasi profil: {e}")
+
+
 def render_career_management():
   con = get_connection()
   company_id = st.session_state.get("company_id")
 
   st.title("📈 Manajemen Riwayat Karier & Mutasi Pegawai")
   st.markdown(
-      "Kelola riwayat karier (Tambah, Edit, Update Status Aktif, atau Hapus)"
+      "Kelola riwayat karier (Tambah, Edit, Update Status Aktif, dan Hapus)"
       " berdasarkan karyawan yang dipilih."
   )
 
@@ -35,9 +85,30 @@ def render_career_management():
 
   st.divider()
 
-  # Tabs untuk memisahkan Aksi: Lihat/Edit vs Tambah Baru
-  tab_list, tab_add = st.tabs(
-      ["📋 Daftar & Edit Riwayat Karier", "➕ Tambah Riwayat Karier Baru"]
+  # Daftar pilihan sesuai constraint database (CHECK constraint)
+  CAREER_TYPES = [
+      "NEW_HIRE",
+      "PROMOTED",
+      "DEMOTED",
+      "CONTRACT_EXTENSION",
+      "STATUS_CHANGE",
+      "MUTATION",
+  ]
+  EMPLOYMENT_STATUSES = [
+      "PERMANENT",
+      "CONTRACT",
+      "PROBATION",
+      "INTERN",
+      "FREELANCE",
+  ]
+
+  # Tabs untuk memisahkan Aksi: Edit/Hapus, Tambah Baru, serta Tabel Tampilan Data
+  tab_list, tab_add, tab_table = st.tabs(
+      [
+          "📋 Daftar & Edit Riwayat",
+          "➕ Tambah Riwayat Baru",
+          "📊 Tabel Riwayat Karier",
+      ]
   )
 
   # --- TAB 1: LIHAT, EDIT, UPDATE is_current, & HAPUS ---
@@ -78,60 +149,19 @@ def render_career_management():
             with col1:
               e_type = st.selectbox(
                   "Tipe Peristiwa",
-                  [
-                      "NEW_HIRE",
-                      "PROMOTION",
-                      "DEMOTION",
-                      "TRANSFER",
-                      "MUTATION",
-                      "CONTRACT_EXTENSION",
-                  ],
+                  CAREER_TYPES,
                   index=(
-                      [
-                          "NEW_HIRE",
-                          "PROMOTION",
-                          "DEMOTION",
-                          "TRANSFER",
-                          "MUTATION",
-                          "CONTRACT_EXTENSION",
-                      ].index(c_type)
-                      if c_type
-                      in [
-                          "NEW_HIRE",
-                          "PROMOTION",
-                          "DEMOTION",
-                          "TRANSFER",
-                          "MUTATION",
-                          "CONTRACT_EXTENSION",
-                      ]
+                      CAREER_TYPES.index(c_type)
+                      if c_type in CAREER_TYPES
                       else 0
                   ),
               )
               e_status = st.selectbox(
                   "Status Kepegawaian",
-                  [
-                      "PERMANENT",
-                      "CONTRACT",
-                      "PROBATION",
-                      "INTERN",
-                      "FREELANCE",
-                  ],
+                  EMPLOYMENT_STATUSES,
                   index=(
-                      [
-                          "PERMANENT",
-                          "CONTRACT",
-                          "PROBATION",
-                          "INTERN",
-                          "FREELANCE",
-                      ].index(row["employment_status"])
-                      if row["employment_status"]
-                      in [
-                          "PERMANENT",
-                          "CONTRACT",
-                          "PROBATION",
-                          "INTERN",
-                          "FREELANCE",
-                      ]
+                      EMPLOYMENT_STATUSES.index(row["employment_status"])
+                      if row["employment_status"] in EMPLOYMENT_STATUSES
                       else 0
                   ),
               )
@@ -200,14 +230,6 @@ def render_career_management():
                                 """,
                       (selected_id,),
                   )
-                  con.execute(
-                      """
-                                    UPDATE hris_employees 
-                                    SET job_title = ?, department = ?, employment_status = ?, updated_at = CURRENT_TIMESTAMP 
-                                    WHERE id = ? AND company_id = ?
-                                """,
-                      (e_job, e_dept, e_status, selected_id, company_id),
-                  )
 
                 con.execute(
                     """
@@ -231,8 +253,12 @@ def render_career_management():
                     ),
                 )
                 con.commit()
+                sync_employee_profile(con, selected_id)
                 con.sync()
-                st.success("🎉 Riwayat karier berhasil diperbarui!")
+                st.success(
+                    "🎉 Riwayat karier berhasil diperbarui dan profil utama"
+                    " diselaraskan!"
+                )
                 st.rerun()
               except Exception as e:
                 st.error(f"❌ Gagal memperbarui data: {str(e)}")
@@ -244,6 +270,7 @@ def render_career_management():
                     (career_id,),
                 )
                 con.commit()
+                sync_employee_profile(con, selected_id)
                 con.sync()
                 st.success("🗑️ Data riwayat karier berhasil dihapus!")
                 st.rerun()
@@ -252,26 +279,17 @@ def render_career_management():
 
   # --- TAB 2: TAMBAH RIWAYAT KARIER BARU ---
   with tab_add:
-    st.subheader(f"Tambah Catatan Karier Baru untuk: {selected_name.split('(')[0]}")
+    st.subheader(
+        f"Tambah Catatan Karier Baru untuk: {selected_name.split('(')[0]}"
+    )
 
     with st.form("form_tambah_career_baru"):
       c1, c2 = st.columns(2)
 
       with c1:
-        new_type = st.selectbox(
-            "Tipe Peristiwa Karier",
-            [
-                "PROMOTION",
-                "MUTATION",
-                "TRANSFER",
-                "DEMOTION",
-                "CONTRACT_EXTENSION",
-                "NEW_HIRE",
-            ],
-        )
+        new_type = st.selectbox("Tipe Peristiwa Karier", CAREER_TYPES)
         new_employment_status = st.selectbox(
-            "Status Kepegawaian",
-            ["PERMANENT", "CONTRACT", "PROBATION", "INTERN", "FREELANCE"],
+            "Status Kepegawaian", EMPLOYMENT_STATUSES
         )
         new_job_title = st.text_input(
             "Jabatan Baru / Job Title (Contoh: Senior Engineer)"
@@ -334,20 +352,6 @@ def render_career_management():
                             """,
                   (selected_id,),
               )
-              con.execute(
-                  """
-                                UPDATE hris_employees 
-                                SET job_title = ?, department = ?, employment_status = ?, updated_at = CURRENT_TIMESTAMP 
-                                WHERE id = ? AND company_id = ?
-                            """,
-                  (
-                      new_job_title,
-                      new_department,
-                      new_employment_status,
-                      selected_id,
-                      company_id,
-                  ),
-              )
 
             con.execute(
                 """
@@ -372,12 +376,45 @@ def render_career_management():
                     new_notes,
                 ),
             )
-
             con.commit()
+            sync_employee_profile(con, selected_id)
             con.sync()
             st.success(
                 "🎉 Riwayat karier baru berhasil ditambahkan dan disinkronkan!"
             )
-            st.rerun()  # Auto reload setelah simpan/tambah data karier
+            st.rerun()
           except Exception as e:
             st.error(f"❌ Gagal menyimpan karier baru: {str(e)}")
+
+  # --- TAB 3: TAMPILAN TABEL RIWAYAT (DOWNLOAD BAWAAN STREAMLIT) ---
+  with tab_table:
+    st.subheader(f"📊 Tabel Riwayat Karier: {selected_name.split('(')[0]}")
+    st.markdown(
+        "Menampilkan seluruh riwayat karier dalam bentuk tabel. Anda dapat"
+        " langsung mengunduhnya melalui ikon *download* di pojok kanan atas"
+        " tabel."
+    )
+
+    df_table = pd.read_sql(
+        f"""
+            SELECT 
+                type AS 'Tipe Peristiwa',
+                employment_status AS 'Status Pegawai',
+                job_title AS 'Jabatan',
+                department AS 'Departemen',
+                start_date AS 'Tanggal Mulai',
+                end_date AS 'Tanggal Selesai',
+                reference_letter_number AS 'No. SK / Ref',
+                CASE WHEN is_current = 1 THEN 'Aktif' ELSE 'Riwayat' END AS 'Status Aktif',
+                notes AS 'Catatan'
+            FROM hris_employee_careers 
+            WHERE employee_id = '{selected_id}'
+            ORDER BY start_date DESC
+        """,
+        con,
+    )
+
+    if not df_table.empty:
+      st.dataframe(df_table, use_container_width=True, hide_index=True)
+    else:
+      st.info("Belum ada data karier untuk ditampilkan.")

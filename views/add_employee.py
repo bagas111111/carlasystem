@@ -49,10 +49,15 @@ def render_add_employee():
             "Status Sistem Karyawan",
             ["ACTIVE", "SUSPENDED", "RESIGNED", "TERMINATED"],
         )
-        join_date = st.date_input("Tanggal Bergabung (Join Date)")
-        contract_end_date = st.date_input(
-            "Akhir Kontrak (Opsional)", value=None
+        
+        # Diubah ke text_input agar fleksibel untuk tanggal lampau / jauh
+        join_date = st.text_input(
+            "Tanggal Bergabung (Format: YYYY-MM-DD)", placeholder="2025-01-01"
         )
+        contract_end_date = st.text_input(
+            "Akhir Kontrak (Opsional, Format: YYYY-MM-DD)", placeholder="2027-12-31"
+        )
+        
         is_rejoin = st.selectbox(
             "Apakah Karyawan Rejoin?",
             [0, 1],
@@ -74,13 +79,28 @@ def render_add_employee():
             "Status Pernikahan", ["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]
         )
         place_of_birth = st.text_input("Tempat Lahir")
-        date_of_birth = st.date_input("Tanggal Lahir", value=None)
+        
+        # Diubah ke text_input agar bebas isi tanggal lahir masa lalu
+        date_of_birth = st.text_input(
+            "Tanggal Lahir (Format: YYYY-MM-DD)", placeholder="1995-08-17"
+        )
+        
         phone_number = st.text_input("Nomor Telepon / WhatsApp")
         email = st.text_input("Alamat Email")
 
       with col4:
-        identity_type = st.selectbox("Tipe Identitas", ["KTP", "PASSPORT", "SIM"])
-        identity_number = st.text_input("Nomor Identitas / KTP")
+        # Pilihan Tipe Identitas sesuai standar sistem
+        identity_options = {
+            "KTP (NIK)": "KTP",
+            "Paspor": "PASSPORT",
+            "KITAS / KITAP": "KITAS",
+            "KTA (Kartu Tanda Anggota)": "KTA",
+            "Lainnya": "OTHER",
+        }
+        selected_id_label = st.selectbox("Tipe Identitas", list(identity_options.keys()))
+        identity_type = identity_options[selected_id_label]
+
+        identity_number = st.text_input("Nomor Identitas / Nomor Kartu")
         family_card_number = st.text_input("Nomor Kartu Keluarga (KK)")
         identity_address = st.text_area("Alamat Sesuai KTP")
         is_same_as_identity_address = st.selectbox(
@@ -130,15 +150,10 @@ def render_add_employee():
           emp_id = str(uuid.uuid4())
           career_id = str(uuid.uuid4())
 
-          join_str = join_date.strftime("%Y-%m-%d") if join_date else None
-          contract_end_str = (
-              contract_end_date.strftime("%Y-%m-%d")
-              if contract_end_date
-              else None
-          )
-          dob_str = (
-              date_of_birth.strftime("%Y-%m-%d") if date_of_birth else None
-          )
+          # Pembersihan string tanggal kosong
+          join_str = join_date.strip() if join_date and join_date.strip() else None
+          contract_end_str = contract_end_date.strip() if contract_end_date and contract_end_date.strip() else None
+          dob_str = date_of_birth.strip() if date_of_birth and date_of_birth.strip() else None
 
           # 1. Insert ke hris_employees dengan company_id aktif
           con.execute(
@@ -205,7 +220,7 @@ def render_add_employee():
                   employment_status,
                   job_title,
                   department,
-                  join_str,
+                  join_str if join_str else "2026-01-01",
                   career_notes,
               ),
           )
@@ -215,6 +230,6 @@ def render_add_employee():
           st.success(
               f"🎉 Data karyawan **{full_name}** berhasil disimpan!"
           )
-          st.rerun()  # Auto reload setelah simpan
+          st.rerun()
         except Exception as e:
           st.error(f"❌ Gagal menyimpan data ke database. Error: {str(e)}")

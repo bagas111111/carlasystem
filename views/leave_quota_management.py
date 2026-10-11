@@ -12,7 +12,8 @@ def render_leave_quota_management():
   st.title("🌴 Manajemen Kuota & Cuti Khusus / Panjang")
   st.markdown(
       "Kelola kuota cuti tahunan/khusus (Bulk Insert & Expired Update) serta"
-      " catat pengajuan cuti berbasis pemotongan kuota aktif."
+      " catat pengajuan cuti berbasis pemotongan kuota aktif (Khusus Karyawan"
+      " Aktif)."
   )
 
   tab_quota, tab_request = st.tabs(
@@ -23,10 +24,10 @@ def render_leave_quota_management():
   )
 
   # ==========================================
-  # TAB 1: KUOTA CUTI & BULK ACTION
+  # TAB 1: KUOTA CUTI & BULK ACTION (HANYA KARYAWAN ACTIVE)
   # ==========================================
   with tab_quota:
-    st.subheader("⚡ Bulk Management Kuota Cuti")
+    st.subheader("⚡ Bulk Management Kuota Cuti (Karyawan ACTIVE)")
 
     action_type = st.radio(
         "Pilih Aksi Massal (Bulk):",
@@ -106,7 +107,7 @@ def render_leave_quota_management():
               con.sync()
               st.success(
                   f"🎉 Berhasil insert kuota ACTIVE untuk {count_success}"
-                  " karyawan!"
+                  " karyawan aktif!"
               )
               st.rerun()
 
@@ -132,7 +133,7 @@ def render_leave_quota_management():
           st.error(f"Gagal memproses aksi bulk: {e}")
 
     st.divider()
-    st.subheader("📋 Daftar Kuota Cuti Karyawan")
+    st.subheader("📋 Daftar Kuota Cuti Karyawan Aktif")
 
     # Filter Wajib: Search Tahun & Jenis Cuti
     f_col1, f_col2, f_col3 = st.columns([1, 1, 2])
@@ -150,6 +151,7 @@ def render_leave_quota_management():
           "🔍 Cari Nama, NIP, atau Departemen:", "", key="search_quota"
       )
 
+    # PERHATIAN: Ditambahkan filter e.status = 'ACTIVE' agar hanya data karyawan aktif yang muncul dan bisa di-CRUD
     quota_query = f"""
             SELECT 
                 q.id,
@@ -167,6 +169,7 @@ def render_leave_quota_management():
             WHERE q.company_id = '{company_id}' 
               AND q.year = {filter_year}
               AND q.leave_category = '{filter_cat}'
+              AND e.status = 'ACTIVE'
         """
 
     df_quotas = pd.read_sql(quota_query, con)
@@ -187,7 +190,10 @@ def render_leave_quota_management():
       else:
         df_quotas_filtered = df_quotas
 
-      st.markdown(f"Menampilkan **{len(df_quotas_filtered)}** data kuota.")
+      st.markdown(
+          f"Menampilkan **{len(df_quotas_filtered)}** data kuota karyawan"
+          " aktif."
+      )
       st.dataframe(
           df_quotas_filtered.drop(columns=["id"]),
           use_container_width=True,
@@ -195,7 +201,7 @@ def render_leave_quota_management():
       )
 
       if not df_quotas_filtered.empty:
-        with st.expander("⚙️ Edit Kuota / Status Individual"):
+        with st.expander("⚙️ Edit Kuota / Status Individual (Karyawan Aktif)"):
           quota_options = {
               f"{row['Nama Karyawan']} (NIP: {row['NIP']}) - {row['Jenis Cuti']} ({row['Tahun']})": row[
                   "id"
@@ -257,13 +263,13 @@ def render_leave_quota_management():
             except Exception as e:
               st.error(f"Gagal menghapus: {e}")
     else:
-      st.info("Belum ada data kuota cuti untuk filter yang dipilih.")
+      st.info("Belum ada data kuota cuti untuk karyawan aktif dengan filter yang dipilih.")
 
   # ==========================================
-  # TAB 2: PENGAJUAN CUTI PANJANG & RIWAYAT
+  # TAB 2: PENGAJUAN CUTI PANJANG & RIWAYAT (HANYA KARYAWAN ACTIVE)
   # ==========================================
   with tab_request:
-    st.subheader("📝 Input Pengajuan Cuti (Pemotongan Kuota)")
+    st.subheader("📝 Input Pengajuan Cuti (Pemotongan Kuota Karyawan Aktif)")
 
     df_emp = pd.read_sql(
         f"SELECT id, full_name, employee_code, department FROM hris_employees WHERE company_id = '{company_id}' AND status = 'ACTIVE'",
@@ -281,7 +287,7 @@ def render_leave_quota_management():
 
     with st.form("form_long_leave"):
       selected_emp_req = st.selectbox(
-          "Pilih Karyawan *Wajib", list(emp_dict.keys()), key="req_emp"
+          "Pilih Karyawan Aktif *Wajib", list(emp_dict.keys()), key="req_emp"
       )
       emp_id_req = emp_dict[selected_emp_req]
 
@@ -329,7 +335,6 @@ def render_leave_quota_management():
         elif not req_reason:
           st.error("❌ Harap isi alasan cuti!")
         else:
-          # Cek Ketersediaan & Validasi Kuota ACTIVE
           df_q_check = pd.read_sql(
               f"""
                         SELECT id, total_quota, used_quota, status 
@@ -368,7 +373,6 @@ def render_leave_quota_management():
                 start_str = start_d.strftime("%Y-%m-%d")
                 end_str = end_d.strftime("%Y-%m-%d")
 
-                # Insert Ke hris_leave_requests
                 con.execute(
                     """
                                     INSERT INTO hris_leave_requests (id, company_id, employee_id, year, leave_category, start_date, end_date, total_days, reason)
@@ -387,7 +391,6 @@ def render_leave_quota_management():
                     ),
                 )
 
-                # Update Potong used_quota
                 con.execute(
                     """
                                     UPDATE hris_leave_quotas 
@@ -408,19 +411,20 @@ def render_leave_quota_management():
                 st.error(f"Gagal menyimpan pengajuan: {e}")
 
     st.divider()
-    st.subheader("📋 Riwayat Pengajuan Cuti (Filter Rentang Tanggal)")
+    st.subheader("📋 Riwayat Pengajuan Cuti (Karyawan Aktif)")
 
-    # Filter Rentang Tanggal & Search Keyword
     r_col1, r_col2, r_col3 = st.columns([2, 2, 3])
     today = datetime.date.today()
     first_day_of_month = today.replace(day=1)
 
     with r_col1:
       filter_start_d = st.date_input(
-          "Dari Tanggal (Mulai)", value=first_day_of_month
+          "Dari Tanggal (Mulai)", value=first_day_of_month, key="req_start"
       )
     with r_col2:
-      filter_end_d = st.date_input("Sampai Tanggal (Selesai)", value=today)
+      filter_end_d = st.date_input(
+          "Sampai Tanggal (Selesai)", value=today, key="req_end"
+      )
     with r_col3:
       search_req_keyword = st.text_input(
           "🔍 Cari Nama, NIP, atau Jenis Cuti:", "", key="search_req"
@@ -435,6 +439,7 @@ def render_leave_quota_management():
         filter_end_d.strftime("%Y-%m-%d") if filter_end_d else "2099-12-31"
     )
 
+    # Filter e.status = 'ACTIVE' agar riwayat yang dikelola hanya untuk karyawan aktif
     req_query = f"""
             SELECT 
                 r.id,
@@ -451,6 +456,7 @@ def render_leave_quota_management():
             FROM hris_leave_requests r
             JOIN hris_employees e ON r.employee_id = e.id
             WHERE r.company_id = '{company_id}'
+              AND e.status = 'ACTIVE'
               AND r.start_date >= '{f_start_str}'
               AND r.start_date <= '{f_end_str}'
             ORDER BY r.start_date DESC
@@ -474,8 +480,8 @@ def render_leave_quota_management():
         df_req_filtered = df_requests
 
       st.markdown(
-          f"Menampilkan **{len(df_req_filtered)}** data riwayat dari rentang"
-          f" **{f_start_str}** s.d **{f_end_str}**."
+          f"Menampilkan **{len(df_req_filtered)}** data riwayat karyawan aktif"
+          f" dari rentang **{f_start_str}** s.d **{f_end_str}**."
       )
       st.dataframe(
           df_req_filtered.drop(columns=["id"]),
@@ -507,7 +513,6 @@ def render_leave_quota_management():
               r_year = int(r_data["year"])
               r_days = int(r_data["total_days"])
 
-              # Restorasi Kuota
               con.execute(
                   """
                                 UPDATE hris_leave_quotas 
@@ -517,7 +522,6 @@ def render_leave_quota_management():
                   (r_days, company_id, r_emp, r_year, r_cat),
               )
 
-              # Hapus Transaksi
               con.execute(
                   "DELETE FROM hris_leave_requests WHERE id = ?",
                   (selected_r_id,),
@@ -533,6 +537,6 @@ def render_leave_quota_management():
               st.error(f"Gagal menghapus riwayat: {e}")
     else:
       st.info(
-          f"Tidak ada data riwayat pengajuan cuti pada rentang tanggal"
-          f" {f_start_str} s.d {f_end_str}."
+          f"Tidak ada data riwayat pengajuan cuti karyawan aktif pada rentang"
+          f" tanggal {f_start_str} s.d {f_end_str}."
       )
