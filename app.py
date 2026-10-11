@@ -5,9 +5,10 @@ from views.company_management import render_company_management
 from views.dashboard import render_dashboard
 from views.edit_employee import render_edit_employee
 from views.employees import render_employees
-from views.leave_management import (
-    render_leave_management,
-)  # <--- Import Manajemen Izin
+from views.leave_management import render_leave_management
+from views.leave_quota_management import (
+    render_leave_quota_management,
+)  # <--- Import Manajemen Kuota & Cuti Panjang
 from views.login import render_login
 from views.profile import render_profile
 from views.users_management import render_users_management
@@ -33,7 +34,8 @@ else:
       "Edit Data Karyawan",
       "Detail & Riwayat Karier",
       "Manajemen Karier",
-      "Manajemen Izin & Cuti",  # <--- Menu Baru
+      "Manajemen Izin & Cuti",
+      "Kuota & Cuti Panjang",  # <--- Menu Baru
   ]
 
   # Jika user adalah SUPER_ADMIN, berikan akses penuh ke manajemen perusahaan dan user
@@ -61,8 +63,10 @@ else:
     render_profile()
   elif menu == "Manajemen Karier":
     render_career_management()
-  elif menu == "Manajemen Izin & Cuti":  # <--- Routing Baru
+  elif menu == "Manajemen Izin & Cuti":
     render_leave_management()
+  elif menu == "Kuota & Cuti Panjang":  # <--- Routing Baru
+    render_leave_quota_management()
   elif menu == "Manajemen Perusahaan":
     render_company_management()
   elif menu == "Manajemen Akun & User":
