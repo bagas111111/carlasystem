@@ -170,7 +170,7 @@ def render_wms_stock_list():
         f"📊 Ditemukan {len(df)} catatan mutasi stok pada rentang tanggal"
         f" {start_date} s.d. {end_date}."
     )
-    st.dataframe(df.drop(columns=["ID"]), width="stretch")
+    st.dataframe(df.drop(columns=["ID"]), use_container_width=True, hide_index=True)
   else:
     st.warning(
         "⚠️ Tidak ada data mutasi stok yang ditemukan sesuai filter tersebut."
