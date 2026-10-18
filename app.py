@@ -26,6 +26,30 @@ st.set_page_config(
     page_title="HRIS & WMS Mini Cloud", page_icon="📦", layout="wide"
 )
 
+# ---------------------------------------------------------
+# HIDE STREAMLIT BRANDING & MANAGE APP BUTTON
+# ---------------------------------------------------------
+st.markdown(
+    """
+    <style>
+    /* Sembunyikan footer bawaan "Hosted with Streamlit" */
+    footer {visibility: hidden; display: none !important;}
+    
+    /* Sembunyikan menu titik tiga di pojok kanan atas */
+    #MainMenu {visibility: hidden; display: none !important;}
+    
+    /* Sembunyikan header bawaan Streamlit */
+    header {visibility: hidden; display: none !important;}
+    
+    /* Sembunyikan tombol "Manage app" dan badge GitHub di pojok kanan bawah */
+    .stAppDeployButton {display: none !important;}
+    div[data-testid="stStatusWidget"] {display: none !important;}
+    [data-testid="manage-app-button"] {display: none !important;}
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
 if "logged_in" not in st.session_state:
   st.session_state["logged_in"] = False
 
