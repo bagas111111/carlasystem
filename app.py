@@ -6,17 +6,18 @@ from views.dashboard import render_dashboard
 from views.edit_employee import render_edit_employee
 from views.employees import render_employees
 from views.leave_management import render_leave_management
-from views.leave_quota_management import (
-    render_leave_quota_management,
-)
+from views.leave_quota_management import render_leave_quota_management
 from views.login import render_login
-from views.menu_management import (
-    render_menu_management,
-)
+from views.menu_management import render_menu_management
 from views.profile import render_profile
 from views.users_management import render_users_management
-from views.wms_suppliers import render_wms_suppliers  # <--- Import CRUD Supplier WMS
-from views.wms_warehouses import render_wms_warehouses  # <--- Import CRUD Gudang WMS
+
+# --- IMPORT MODUL WMS ---
+from views.wms_warehouses import render_wms_warehouses
+from views.wms_suppliers import render_wms_suppliers
+from views.wms_categories import render_wms_categories
+from views.wms_items_list import render_wms_items_list  # <--- Halaman Lihat & Filter
+from views.wms_items_cud import render_wms_items_cud    # <--- Halaman Kelola CUD Barang
 
 st.set_page_config(
     page_title="HRIS & WMS Mini Cloud", page_icon="📦", layout="wide"
@@ -40,7 +41,10 @@ else:
     menu_options = [
         "📦 WMS - Manajemen Gudang",
         "🤝 WMS - Manajemen Supplier",
-        # Nanti menyusul: Master Barang, Log Transaksi, dll
+        "🏷️ WMS - Manajemen Kategori",
+        "📋 WMS - Lihat & Filter Barang",  # <--- Menu Lihat & Filter Katalog
+        "⚙️ WMS - Kelola Barang",     # <--- Menu Input/Edit/Hapus Katalog
+        # Nanti menyusul: Log Mutasi Stok / Transaksi
     ]
   else:
     # Menu standar HRIS
@@ -75,6 +79,12 @@ else:
     render_wms_warehouses()
   elif menu == "🤝 WMS - Manajemen Supplier":
     render_wms_suppliers()
+  elif menu == "🏷️ WMS - Manajemen Kategori":
+    render_wms_categories()
+  elif menu == "📋 WMS - Lihat & Filter Barang":  # <--- Route Lihat Katalog
+    render_wms_items_list()
+  elif menu == "⚙️ WMS - Kelola Barang":      # <--- Route CUD Katalog
+    render_wms_items_cud()
   elif menu == "Dashboard Utama":
     render_dashboard()
   elif menu == "Kelola Menu & Pintasan":
