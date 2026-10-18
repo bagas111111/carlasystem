@@ -1,6 +1,7 @@
 import uuid
 import streamlit as st
 from database import get_connection
+from utils.image_helper import upload_image_to_cloud
 
 
 def render_wms_items_cud():
@@ -151,18 +152,26 @@ def render_wms_items_cud():
             "Maximum Stock (Batas Max)", min_value=0, value=100
         )
 
-      image_url = st.text_input(
-          "Image URL (Opsional)",
-          placeholder="Cth: Link langsung gambar (lh3.googleusercontent.com)",
+      # FILE UPLOADER MENGGANTIKAN TEXT INPUT URL
+      uploaded_image = st.file_uploader(
+          "Upload Foto Barang (Opsional)",
+          type=["jpg", "jpeg", "png", "webp"],
+          key="add_img_file",
       )
 
-      btn_submit = st.form_submit_button("💾 Simpan Barang Baru")
+      btn_submit = st.form_submit_button("💾 Simpan Barang Baru", type="primary")
 
       if btn_submit:
         if not sku or not item_name:
           st.error("⚠️ SKU dan Nama Barang wajib diisi!")
         else:
           try:
+            # Unggah foto ke Catbox jika ada file yang dipilih
+            image_url = ""
+            if uploaded_image is not None:
+              with st.spinner("⏳ Mengunggah foto barang ke Cloud..."):
+                image_url = upload_image_to_cloud(uploaded_image) or ""
+
             new_id = str(uuid.uuid4())
             final_unit = unit.strip().upper() if unit else "PCS"
             con.execute(
@@ -369,15 +378,31 @@ def render_wms_items_cud():
             "Maximum Stock", min_value=0, value=int(it_max or 0)
         )
 
-      edit_img = st.text_input("Image URL", value=it_img or "")
+      # TAMPILKAN PREVIEW FOTO JIKA SUDAH ADA
+      if it_img and str(it_img).strip():
+        st.image(it_img, width=150, caption="Foto Saat Ini")
 
-      btn_update = st.form_submit_button("🔄 Perbarui Katalog Barang")
+      edit_uploaded_image = st.file_uploader(
+          "Ganti Foto Barang (Opsional)",
+          type=["jpg", "jpeg", "png", "webp"],
+          key="edit_img_file",
+      )
+
+      btn_update = st.form_submit_button("🔄 Perbarui Katalog Barang", type="primary")
 
       if btn_update:
         if not edit_sku or not edit_name:
           st.error("⚠️ SKU dan Nama Barang wajib diisi!")
         else:
           try:
+            # Gunakan URL foto baru jika ada file yang diunggah, jika tidak tetap gunakan URL lama
+            final_img_url = it_img
+            if edit_uploaded_image is not None:
+              with st.spinner("⏳ Mengunggah foto barang baru ke Cloud..."):
+                uploaded_new_url = upload_image_to_cloud(edit_uploaded_image)
+                if uploaded_new_url:
+                  final_img_url = uploaded_new_url
+
             final_edit_unit = edit_unit.strip().upper() if edit_unit else "PCS"
             con.execute(
                 """
@@ -402,7 +427,7 @@ def render_wms_items_cud():
                     edit_min,
                     edit_rop,
                     edit_max,
-                    edit_img,
+                    final_img_url,
                     it_id,
                     company_id,
                 ),

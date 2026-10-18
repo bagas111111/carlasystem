@@ -1,7 +1,8 @@
 import uuid
-from database import get_connection
 import pandas as pd
 import streamlit as st
+from database import get_connection
+from utils.image_helper import upload_image_to_cloud
 
 
 def render_menu_management():
@@ -23,15 +24,18 @@ def render_menu_management():
   with tab_list:
     st.subheader("Daftar Pintasan Menu Aktif")
 
-    df_menus = pd.read_sql(
-        f"""
-            SELECT id, menu_group, menu_title, menu_url, image_url, sort_order 
-            FROM hris_company_menus 
-            WHERE company_id = '{company_id}' 
-            ORDER BY menu_group ASC, sort_order ASC
-        """,
-        con,
-    )
+    try:
+      df_menus = pd.read_sql(
+          f"""
+              SELECT id, menu_group, menu_title, menu_url, image_url, sort_order 
+              FROM hris_company_menus 
+              WHERE company_id = '{company_id}' 
+              ORDER BY menu_group ASC, sort_order ASC
+          """,
+          con,
+      )
+    except Exception:
+      df_menus = pd.DataFrame()
 
     if df_menus.empty:
       st.info(
@@ -39,7 +43,7 @@ def render_menu_management():
           " sebelah."
       )
     else:
-      # Tampilkan sebagai tabel dengan fitur download bawaan Streamlit
+      # Tampilkan sebagai tabel
       st.dataframe(df_menus, use_container_width=True, hide_index=True)
 
       st.divider()
@@ -61,6 +65,10 @@ def render_menu_management():
           con,
       ).iloc[0]
 
+      curr_img = str(curr_data["image_url"] or "")
+      if curr_img and curr_img.strip():
+        st.image(curr_img, width=120, caption="Gambar / Ikon Saat Ini")
+
       with st.form(f"form_edit_menu_{selected_menu_id}"):
         c1, c2 = st.columns(2)
         with c1:
@@ -69,16 +77,17 @@ def render_menu_management():
               value=str(curr_data["menu_group"] or "Utama"),
           )
           e_title = st.text_input(
-              "Judul Menu", value=str(curr_data["menu_title"] or "")
+              "Judul Menu *", value=str(curr_data["menu_title"] or "")
           )
           e_url = st.text_input(
-              "URL Tujuan (Link Drive, Form, dll.)",
+              "URL Tujuan * (Link Drive, Form, dll.)",
               value=str(curr_data["menu_url"] or ""),
           )
         with c2:
-          e_image = st.text_input(
-              "URL Gambar / Ikon (Opsional)",
-              value=str(curr_data["image_url"] or ""),
+          edit_uploaded_image = st.file_uploader(
+              "Ganti Gambar / Ikon (Opsional)",
+              type=["jpg", "jpeg", "png", "webp"],
+              key=f"edit_menu_img_{selected_menu_id}",
           )
           e_order = st.number_input(
               "Urutan Tampil (Sort Order)",
@@ -87,7 +96,7 @@ def render_menu_management():
           )
 
         col_b1, col_b2 = st.columns(2)
-        update_btn = col_b1.form_submit_button("💾 Simpan Perubahan Menu")
+        update_btn = col_b1.form_submit_button("💾 Simpan Perubahan Menu", type="primary")
         delete_btn = col_b2.form_submit_button("🗑️ Hapus Menu Ini")
 
         if update_btn:
@@ -95,13 +104,21 @@ def render_menu_management():
             st.error("⚠️ Judul Menu dan URL Tujuan wajib diisi!")
           else:
             try:
+              # Jika ada file gambar baru yang diunggah, upload ke Catbox
+              final_img_url = curr_img
+              if edit_uploaded_image is not None:
+                with st.spinner("⏳ Mengunggah foto/ikon baru..."):
+                  uploaded_url = upload_image_to_cloud(edit_uploaded_image)
+                  if uploaded_url:
+                    final_img_url = uploaded_url
+
               con.execute(
                   """
-                                UPDATE hris_company_menus 
-                                SET menu_group = ?, menu_title = ?, menu_url = ?, image_url = ?, sort_order = ?
-                                WHERE id = ?
-                            """,
-                  (e_group, e_title, e_url, e_image, int(e_order), selected_menu_id),
+                      UPDATE hris_company_menus 
+                      SET menu_group = ?, menu_title = ?, menu_url = ?, image_url = ?, sort_order = ?
+                      WHERE id = ?
+                  """,
+                  (e_group, e_title, e_url, final_img_url, int(e_order), selected_menu_id),
               )
               con.commit()
               con.sync()
@@ -136,41 +153,47 @@ def render_menu_management():
             placeholder="Contoh: Dokumen SOP, Absensi, Operasional",
         )
         new_title = st.text_input(
-            "Judul Menu", placeholder="Contoh: Form Pengajuan Lembur"
+            "Judul Menu *", placeholder="Contoh: Form Pengajuan Lembur"
         )
         new_url = st.text_input(
-            "URL Tujuan",
+            "URL Tujuan *",
             placeholder="https://docs.google.com/spreadsheets/d/...",
         )
       with c2:
-        new_image = st.text_input(
-            "URL Gambar / Ikon (Opsional)",
-            placeholder="https://example.com/icon.png",
+        new_uploaded_image = st.file_uploader(
+            "Upload Gambar / Ikon Menu (Opsional)",
+            type=["jpg", "jpeg", "png", "webp"],
+            key="add_menu_img",
         )
         new_order = st.number_input(
             "Urutan Tampil (Sort Order)", min_value=0, value=0, step=1
         )
 
-      submitted_menu = st.form_submit_button("💾 Simpan Menu Baru")
+      submitted_menu = st.form_submit_button("💾 Simpan Menu Baru", type="primary")
 
       if submitted_menu:
         if not new_title or not new_url:
           st.error("⚠️ Judul Menu dan URL Tujuan wajib diisi!")
         else:
           try:
+            new_img_url = ""
+            if new_uploaded_image is not None:
+              with st.spinner("⏳ Mengunggah foto/ikon menu..."):
+                new_img_url = upload_image_to_cloud(new_uploaded_image) or ""
+
             menu_id = str(uuid.uuid4())
             con.execute(
                 """
-                            INSERT INTO hris_company_menus (id, company_id, menu_group, menu_title, menu_url, image_url, sort_order)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """,
+                    INSERT INTO hris_company_menus (id, company_id, menu_group, menu_title, menu_url, image_url, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
                 (
                     menu_id,
                     company_id,
                     new_group,
                     new_title,
                     new_url,
-                    new_image,
+                    new_img_url,
                     int(new_order),
                 ),
             )

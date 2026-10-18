@@ -13,11 +13,17 @@ from views.profile import render_profile
 from views.users_management import render_users_management
 
 # --- IMPORT MODUL WMS ---
-from views.wms_warehouses import render_wms_warehouses
-from views.wms_suppliers import render_wms_suppliers
 from views.wms_categories import render_wms_categories
-from views.wms_items_list import render_wms_items_list  # <--- Halaman Lihat & Filter
-from views.wms_items_cud import render_wms_items_cud    # <--- Halaman Kelola CUD Barang
+from views.wms_items_cud import render_wms_items_cud
+from views.wms_items_list import render_wms_items_list
+from views.wms_stock_cud import (
+    render_wms_stock_cud,  # <--- Halaman Input Mutasi Stok
+)
+from views.wms_stock_list import (
+    render_wms_stock_list,  # <--- Halaman Lihat Kartu Stok
+)
+from views.wms_suppliers import render_wms_suppliers
+from views.wms_warehouses import render_wms_warehouses
 
 st.set_page_config(
     page_title="HRIS & WMS Mini Cloud", page_icon="📦", layout="wide"
@@ -42,9 +48,10 @@ else:
         "📦 WMS - Manajemen Gudang",
         "🤝 WMS - Manajemen Supplier",
         "🏷️ WMS - Manajemen Kategori",
-        "📋 WMS - Lihat & Filter Barang",  # <--- Menu Lihat & Filter Katalog
-        "⚙️ WMS - Kelola Barang",     # <--- Menu Input/Edit/Hapus Katalog
-        # Nanti menyusul: Log Mutasi Stok / Transaksi
+        "📋 WMS - Master Barang",
+        "⚙️ WMS - Kelola Barang",
+        "📊 WMS - Kartu Stok & Mutasi",  # <--- Menu Lihat Riwayat Mutasi
+        "📝 WMS - Input Transaksi Stok",  # <--- Menu Input Mutasi (IN/OUT/ADJ)
     ]
   else:
     # Menu standar HRIS
@@ -81,10 +88,14 @@ else:
     render_wms_suppliers()
   elif menu == "🏷️ WMS - Manajemen Kategori":
     render_wms_categories()
-  elif menu == "📋 WMS - Lihat & Filter Barang":  # <--- Route Lihat Katalog
+  elif menu == "📋 WMS - Master Barang":
     render_wms_items_list()
-  elif menu == "⚙️ WMS - Kelola Barang":      # <--- Route CUD Katalog
+  elif menu == "⚙️ WMS - Kelola Barang":
     render_wms_items_cud()
+  elif menu == "📊 WMS - Kartu Stok & Mutasi":  # <--- Route Kartu Stok
+    render_wms_stock_list()
+  elif menu == "📝 WMS - Input Transaksi Stok":  # <--- Route Input Mutasi
+    render_wms_stock_cud()
   elif menu == "Dashboard Utama":
     render_dashboard()
   elif menu == "Kelola Menu & Pintasan":
