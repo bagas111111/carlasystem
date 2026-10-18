@@ -8,12 +8,16 @@ from utils.image_helper import upload_image_to_cloud
 def render_menu_management():
   con = get_connection()
   company_id = st.session_state.get("company_id")
+  user_id = st.session_state.get("user_id")
 
-  st.title("📌 Kelola Pintasan Menu & Shortcut Perusahaan")
+  if not company_id or not user_id:
+    st.error("⚠️ Session company_id atau user_id tidak ditemukan. Silakan login ulang.")
+    return
+
+  st.title("📌 Kelola Pintasan Menu & Shortcut Pribadi")
   st.markdown(
       "Tambahkan, ubah, atau hapus kelompok tautan menu cepat (seperti Google"
-      " Drive, Form Eksternal, Panduan, dll.) yang akan tampil di Dashboard"
-      " utama perusahaan Anda."
+      " Drive, Form Eksternal, Panduan, dll.) yang tampil khusus untuk akun Anda."
   )
 
   tab_list, tab_add = st.tabs(
@@ -22,14 +26,14 @@ def render_menu_management():
 
   # --- TAB 1: DAFTAR, EDIT & HAPUS MENU ---
   with tab_list:
-    st.subheader("Daftar Pintasan Menu Aktif")
+    st.subheader("Daftar Pintasan Menu Aktif Anda")
 
     try:
       df_menus = pd.read_sql(
           f"""
               SELECT id, menu_group, menu_title, menu_url, image_url, sort_order 
               FROM hris_company_menus 
-              WHERE company_id = '{company_id}' 
+              WHERE company_id = '{company_id}' AND user_id = '{user_id}' 
               ORDER BY menu_group ASC, sort_order ASC
           """,
           con,
@@ -39,7 +43,7 @@ def render_menu_management():
 
     if df_menus.empty:
       st.info(
-          "Belum ada pintasan menu yang dibuat. Silakan tambah melalui tab"
+          "Belum ada pintasan menu pribadi yang dibuat. Silakan tambah melalui tab"
           " sebelah."
       )
     else:
@@ -61,7 +65,7 @@ def render_menu_management():
       selected_menu_id = menu_options[selected_label]
 
       curr_data = pd.read_sql(
-          f"SELECT * FROM hris_company_menus WHERE id = '{selected_menu_id}'",
+          f"SELECT * FROM hris_company_menus WHERE id = '{selected_menu_id}' AND user_id = '{user_id}'",
           con,
       ).iloc[0]
 
@@ -116,9 +120,9 @@ def render_menu_management():
                   """
                       UPDATE hris_company_menus 
                       SET menu_group = ?, menu_title = ?, menu_url = ?, image_url = ?, sort_order = ?
-                      WHERE id = ?
+                      WHERE id = ? AND company_id = ? AND user_id = ?
                   """,
-                  (e_group, e_title, e_url, final_img_url, int(e_order), selected_menu_id),
+                  (e_group, e_title, e_url, final_img_url, int(e_order), selected_menu_id, company_id, user_id),
               )
               con.commit()
               con.sync()
@@ -130,8 +134,8 @@ def render_menu_management():
         if delete_btn:
           try:
             con.execute(
-                "DELETE FROM hris_company_menus WHERE id = ?",
-                (selected_menu_id,),
+                "DELETE FROM hris_company_menus WHERE id = ? AND company_id = ? AND user_id = ?",
+                (selected_menu_id, company_id, user_id),
             )
             con.commit()
             con.sync()
@@ -184,12 +188,13 @@ def render_menu_management():
             menu_id = str(uuid.uuid4())
             con.execute(
                 """
-                    INSERT INTO hris_company_menus (id, company_id, menu_group, menu_title, menu_url, image_url, sort_order)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO hris_company_menus (id, company_id, user_id, menu_group, menu_title, menu_url, image_url, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     menu_id,
                     company_id,
+                    user_id,
                     new_group,
                     new_title,
                     new_url,
@@ -202,4 +207,4 @@ def render_menu_management():
             st.success(f"🎉 Menu **{new_title}** berhasil ditambahkan!")
             st.rerun()
           except Exception as e:
-            st.error(f"❌ Gagal menyimpan menu: {e}")
+            f"❌ Gagal menyimpan menu: {e}"

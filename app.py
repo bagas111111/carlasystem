@@ -14,14 +14,11 @@ from views.users_management import render_users_management
 
 # --- IMPORT MODUL WMS ---
 from views.wms_categories import render_wms_categories
+from views.wms_dashboard import render_wms_dashboard  # <--- Dashboard Khusus WMS
 from views.wms_items_cud import render_wms_items_cud
 from views.wms_items_list import render_wms_items_list
-from views.wms_stock_cud import (
-    render_wms_stock_cud,  # <--- Halaman Input Mutasi Stok
-)
-from views.wms_stock_list import (
-    render_wms_stock_list,  # <--- Halaman Lihat Kartu Stok
-)
+from views.wms_stock_cud import render_wms_stock_cud
+from views.wms_stock_list import render_wms_stock_list
 from views.wms_suppliers import render_wms_suppliers
 from views.wms_warehouses import render_wms_warehouses
 
@@ -45,13 +42,15 @@ else:
   if user_role == "WMS_ADMIN":
     # Menu khusus untuk Administrator WMS / Gudang
     menu_options = [
+        "📊 Dashboard WMS",  # <--- Dashboard Utama WMS
+        "📌 Kelola Menu & Pintasan",  # <--- Akses Global Shortcut
         "📦 WMS - Manajemen Gudang",
         "🤝 WMS - Manajemen Supplier",
         "🏷️ WMS - Manajemen Kategori",
         "📋 WMS - Master Barang",
         "⚙️ WMS - Kelola Barang",
-        "📊 WMS - Kartu Stok & Mutasi",  # <--- Menu Lihat Riwayat Mutasi
-        "📝 WMS - Input Transaksi Stok",  # <--- Menu Input Mutasi (IN/OUT/ADJ)
+        "📊 WMS - Kartu Stok & Mutasi",
+        "📝 WMS - Input Transaksi Stok",
     ]
   else:
     # Menu standar HRIS
@@ -82,7 +81,11 @@ else:
   # ---------------------------------------------------------
   # ROUTING HALAMAN
   # ---------------------------------------------------------
-  if menu == "📦 WMS - Manajemen Gudang":
+  if menu == "📊 Dashboard WMS":
+    render_wms_dashboard()
+  elif menu == "📌 Kelola Menu & Pintasan" or menu == "Kelola Menu & Pintasan":
+    render_menu_management()
+  elif menu == "📦 WMS - Manajemen Gudang":
     render_wms_warehouses()
   elif menu == "🤝 WMS - Manajemen Supplier":
     render_wms_suppliers()
@@ -92,14 +95,12 @@ else:
     render_wms_items_list()
   elif menu == "⚙️ WMS - Kelola Barang":
     render_wms_items_cud()
-  elif menu == "📊 WMS - Kartu Stok & Mutasi":  # <--- Route Kartu Stok
+  elif menu == "📊 WMS - Kartu Stok & Mutasi":
     render_wms_stock_list()
-  elif menu == "📝 WMS - Input Transaksi Stok":  # <--- Route Input Mutasi
+  elif menu == "📝 WMS - Input Transaksi Stok":
     render_wms_stock_cud()
   elif menu == "Dashboard Utama":
     render_dashboard()
-  elif menu == "Kelola Menu & Pintasan":
-    render_menu_management()
   elif menu == "Data Karyawan":
     render_employees()
   elif menu == "Tambah Karyawan Baru":

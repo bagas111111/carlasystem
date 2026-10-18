@@ -6,6 +6,7 @@ import streamlit as st
 def render_dashboard():
   con = get_connection()
   company_id = st.session_state.get("company_id")
+  user_id = st.session_state.get("user_id")  # Ambil user_id aktif
 
   # Header & Tombol Refresh Manual
   col_t, col_b = st.columns([4, 1])
@@ -50,15 +51,15 @@ def render_dashboard():
 
   st.divider()
 
-  st.subheader("⚡ Pintasan Menu Utama")
+  st.subheader("⚡ Pintasan Menu Pribadi Anda")
 
-  # Ambil menu pintasan dari database khusus company_id ini
+  # Ambil menu pintasan dari database khusus user_id ini
   try:
     df_menus = pd.read_sql(
         f"""
             SELECT menu_group, menu_title, menu_url, image_url 
             FROM hris_company_menus 
-            WHERE company_id = '{company_id}' 
+            WHERE company_id = '{company_id}' AND user_id = '{user_id}' 
             ORDER BY menu_group ASC, sort_order ASC
         """,
         con,
@@ -86,13 +87,15 @@ def render_dashboard():
 
           st.caption(f"📂 {row['menu_group']}")
           st.markdown(f"**{row['menu_title']}**")
-          
+
           # Tombol tautan resmi Streamlit
-          st.link_button("Buka Tautan 🚀", row["menu_url"], use_container_width=True)
+          st.link_button(
+              "Buka Tautan 🚀", row["menu_url"], use_container_width=True
+          )
   else:
     st.info(
-        "💡 Belum ada pintasan menu yang diatur untuk perusahaan ini. Silakan"
-        " buat melalui halaman Kelola Menu."
+        "💡 Belum ada pintasan menu pribadi yang diatur. Silakan buat melalui"
+        " halaman **Kelola Menu & Pintasan**."
     )
 
   st.divider()
