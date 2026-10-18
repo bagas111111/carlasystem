@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 from views.add_employee import render_add_employee
 from views.career_management import render_career_management
 from views.company_management import render_company_management
@@ -25,70 +24,6 @@ from views.wms_warehouses import render_wms_warehouses
 
 st.set_page_config(
     page_title="HRIS & WMS Mini Cloud", page_icon="📦", layout="wide"
-)
-
-# ---------------------------------------------------------
-# HIDE STREAMLIT BRANDING & BADGES (CSS + JS SHADOW DOM HACK)
-# ---------------------------------------------------------
-st.markdown(
-    """
-    <style>
-    /* Sembunyikan elemen standar */
-    footer {visibility: hidden !important; display: none !important;}
-    #MainMenu {visibility: hidden !important; display: none !important;}
-    header {visibility: hidden !important; display: none !important;}
-    .stAppDeployButton {display: none !important;}
-    div[data-testid="stStatusWidget"] {display: none !important;}
-    [data-testid="manage-app-button"] {display: none !important;}
-    </style>
-""",
-    unsafe_allow_html=True,
-)
-
-# Injeksi JavaScript untuk menyapu banner/badge pojok kanan bawah
-components.html(
-    """
-    <script>
-    function removeStreamlitBadges() {
-        const mainDoc = window.parent.document;
-        
-        // Target semua elemen badge / toolbar bawaan
-        const selectors = [
-            'footer',
-            '#MainMenu',
-            'header',
-            '.stAppDeployButton',
-            '[data-testid="stStatusWidget"]',
-            '[data-testid="manage-app-button"]',
-            '.viewerBadge_container__13221',
-            'div[class*="viewerBadge"]',
-            'div[class*="styles_viewerBadge"]'
-        ];
-        
-        selectors.forEach(selector => {
-            const elements = mainDoc.querySelectorAll(selector);
-            elements.forEach(el => {
-                el.style.display = 'none';
-                el.style.visibility = 'hidden';
-            });
-        });
-
-        // Sembunyikan elemen melayang di sudut kanan bawah
-        const allDivs = mainDoc.querySelectorAll('div');
-        allDivs.forEach(div => {
-            const style = window.getComputedStyle(div);
-            if (style.position === 'fixed' && style.bottom === '0px' && style.right === '0px') {
-                div.style.display = 'none';
-            }
-        });
-    }
-
-    // Jalankan otomatis setiap 0.5 detik
-    setInterval(removeStreamlitBadges, 500);
-    </script>
-    """,
-    height=0,
-    width=0,
 )
 
 if "logged_in" not in st.session_state:
