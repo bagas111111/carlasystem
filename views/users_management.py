@@ -82,7 +82,7 @@ def render_users_management():
         full_name = st.text_input("Nama Lengkap Pengguna *Wajib")
         role = st.selectbox(
             "Hak Akses (Role)",
-            ["SUPER_ADMIN", "HR_ADMIN", "HR_STAFF", "VIEWER"],
+            ["SUPER_ADMIN", "HR_ADMIN", "WMS_ADMIN", "VIEWER"],
         )
 
       submitted_user = st.form_submit_button("💾 Simpan Akun Baru")
@@ -152,7 +152,7 @@ def render_users_management():
         comp_vals.index(current_comp_id) if current_comp_id in comp_vals else 0
     )
 
-    roles_list = ["SUPER_ADMIN", "HR_ADMIN", "HR_STAFF", "VIEWER"]
+    roles_list = ["SUPER_ADMIN", "HR_ADMIN", "WMS_ADMIN", "VIEWER"]
     curr_role = curr_u.get("role")
     default_role_idx = (
         roles_list.index(curr_role) if curr_role in roles_list else 1

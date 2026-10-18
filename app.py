@@ -12,12 +12,14 @@ from views.leave_quota_management import (
 from views.login import render_login
 from views.menu_management import (
     render_menu_management,
-)  # <--- Import Manajemen Pintasan Menu
+)
 from views.profile import render_profile
 from views.users_management import render_users_management
+from views.wms_suppliers import render_wms_suppliers  # <--- Import CRUD Supplier WMS
+from views.wms_warehouses import render_wms_warehouses  # <--- Import CRUD Gudang WMS
 
 st.set_page_config(
-    page_title="HRIS Mini Cloud", page_icon="🏢", layout="wide"
+    page_title="HRIS & WMS Mini Cloud", page_icon="📦", layout="wide"
 )
 
 if "logged_in" not in st.session_state:
@@ -26,25 +28,37 @@ if "logged_in" not in st.session_state:
 if not st.session_state["logged_in"]:
   render_login()
 else:
+  user_role = st.session_state.get("role", "USER")
   st.sidebar.title(f"👤 Halo, {st.session_state.get('full_name', 'Admin')}")
-  st.sidebar.caption(f"Role: {st.session_state.get('role', 'USER')}")
+  st.sidebar.caption(f"Role: {user_role}")
 
-  # Susunan Menu Berdasarkan Hak Akses
-  menu_options = [
-      "Dashboard Utama",
-      "Kelola Menu & Pintasan",  # <--- Menu Baru untuk Shortcut
-      "Data Karyawan",
-      "Tambah Karyawan Baru",
-      "Edit Data Karyawan",
-      "Detail & Riwayat Karier",
-      "Manajemen Karier",
-      "Manajemen Izin & Cuti",
-      "Kuota & Cuti Panjang",
-  ]
+  # ---------------------------------------------------------
+  # PENYESUAIAN MENU BERDASARKAN ROLE (ISOLASI WMS_ADMIN)
+  # ---------------------------------------------------------
+  if user_role == "WMS_ADMIN":
+    # Menu khusus untuk Administrator WMS / Gudang
+    menu_options = [
+        "📦 WMS - Manajemen Gudang",
+        "🤝 WMS - Manajemen Supplier",
+        # Nanti menyusul: Master Barang, Log Transaksi, dll
+    ]
+  else:
+    # Menu standar HRIS
+    menu_options = [
+        "Dashboard Utama",
+        "Kelola Menu & Pintasan",
+        "Data Karyawan",
+        "Tambah Karyawan Baru",
+        "Edit Data Karyawan",
+        "Detail & Riwayat Karier",
+        "Manajemen Karier",
+        "Manajemen Izin & Cuti",
+        "Kuota & Cuti Panjang",
+    ]
 
-  # Jika user adalah SUPER_ADMIN, berikan akses penuh ke manajemen perusahaan dan user
-  if st.session_state.get("role") == "SUPER_ADMIN":
-    menu_options.extend(["Manajemen Perusahaan", "Manajemen Akun & User"])
+    # Akses khusus SUPER_ADMIN
+    if user_role == "SUPER_ADMIN":
+      menu_options.extend(["Manajemen Perusahaan", "Manajemen Akun & User"])
 
   menu = st.sidebar.selectbox("Navigasi Menu", menu_options)
 
@@ -54,10 +68,16 @@ else:
     st.session_state.clear()
     st.rerun()
 
-  # Routing Halaman
-  if menu == "Dashboard Utama":
+  # ---------------------------------------------------------
+  # ROUTING HALAMAN
+  # ---------------------------------------------------------
+  if menu == "📦 WMS - Manajemen Gudang":
+    render_wms_warehouses()
+  elif menu == "🤝 WMS - Manajemen Supplier":
+    render_wms_suppliers()
+  elif menu == "Dashboard Utama":
     render_dashboard()
-  elif menu == "Kelola Menu & Pintasan":  # <--- Routing Menu Baru
+  elif menu == "Kelola Menu & Pintasan":
     render_menu_management()
   elif menu == "Data Karyawan":
     render_employees()

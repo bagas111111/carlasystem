@@ -3,7 +3,7 @@ import streamlit as st
 
 
 def render_login():
-  st.title("🔐 Login Sistem HRIS Mini")
+  st.title("🔐 Login Sistem")
   st.markdown("Silakan masukkan *username* dan *password* akun Anda.")
 
   with st.form("form_login"):
