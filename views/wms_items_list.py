@@ -184,7 +184,6 @@ def render_wms_items_list():
 
   if items_raw:
     processed_data = []
-    # Tentukan label kolom Gudang di tabel berdasarkan filter
     warehouse_label_col = selected_wh_label if selected_wh_id else "ALL"
 
     for row in items_raw:
@@ -207,15 +206,14 @@ def render_wms_items_list():
           img_url,
       ) = row
 
-      # Indikator Status Stok Pintar
       if stk_qty <= min_stk:
-        status_stk = "🚨 CRITICAL / MINIMUM"
+        status_stk = "CRITICAL / MINIMUM"
       elif stk_qty <= rop:
-        status_stk = "🔄 REORDER POINT"
+        status_stk = "REORDER POINT"
       elif stk_qty >= max_stk:
-        status_stk = "⛔ OVERSTOCK"
+        status_stk = "OVERSTOCK"
       else:
-        status_stk = "✅ AMAN"
+        status_stk = "AMAN"
 
       processed_data.append({
           "Gudang / Posisi": warehouse_label_col,
@@ -244,9 +242,9 @@ def render_wms_items_list():
         f" {warehouse_label_col})."
     )
 
-    # Tampilkan tabel lengkap tanpa Image URL
+    # Tampilkan tabel lengkap beserta kolom Image URL agar ikut terekspor/bisa di-download
     st.dataframe(
-        df.drop(columns=["Image URL"]),
+        df,
         use_container_width=True,
     )
 
