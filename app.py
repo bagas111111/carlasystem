@@ -32,19 +32,26 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Sembunyikan footer bawaan "Hosted with Streamlit" */
+    /* Sembunyikan footer, header, dan menu utama */
     footer {visibility: hidden; display: none !important;}
-    
-    /* Sembunyikan menu titik tiga di pojok kanan atas */
     #MainMenu {visibility: hidden; display: none !important;}
-    
-    /* Sembunyikan header bawaan Streamlit */
     header {visibility: hidden; display: none !important;}
     
-    /* Sembunyikan tombol "Manage app" dan badge GitHub di pojok kanan bawah */
+    /* Paling ampuh: sembunyikan seluruh kontainer pojok kanan bawah (badge/deploy button/status) */
     .stAppDeployButton {display: none !important;}
     div[data-testid="stStatusWidget"] {display: none !important;}
-    [data-testid="manage-app-button"] {display: none !important;}
+    [data-testid="manage-app-button"] {display: none !important; visibility: hidden !important;}
+    
+    /* Sembunyikan elemen float di sudut kanan bawah layar secara mutlak */
+    div.eczcs4p0, div[class*="css-1rs6os"], div[class*="viewerBadge"] {
+        display: none !important;
+        visibility: hidden !important;
+    }
+    
+    /* Target universal untuk semua elemen fixed/absolute di pojok kanan bawah */
+    body > div:last-child > div:last-child > div[style*="position: fixed"] {
+        display: none !important;
+    }
     </style>
 """,
     unsafe_allow_html=True,
