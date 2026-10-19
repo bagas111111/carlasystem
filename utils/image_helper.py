@@ -1,23 +1,20 @@
 import base64
+import uuid
 import requests
 import streamlit as st
 
 
 def upload_image_to_cloud(uploaded_file):
-  """Mengunggah gambar ke ImgBB API secara otomatis menggunakan Secrets
+  """Mengunggah gambar ke ImgBB API dengan nama file yang disanitasi
 
-  IMGBB_API_KEY.
-
-  Mengembalikan direct URL gambar (cth: https://i.ibb.co/abc123/image.png).
+  agar aman dari error URL rusak.
   """
   if uploaded_file is None:
     return None
 
   api_key = st.secrets.get("IMGBB_API_KEY")
   if not api_key:
-    st.error(
-        "⚠️ Secrets IMGBB_API_KEY belum dikonfigurasi di Streamlit Cloud!"
-    )
+    st.error("⚠️ Secrets IMGBB_API_KEY belum dikonfigurasi di Streamlit Cloud!")
     return None
 
   url = "https://api.imgbb.com/1/upload"
@@ -26,10 +23,18 @@ def upload_image_to_cloud(uploaded_file):
     file_bytes = uploaded_file.getvalue()
     base64_image = base64.b64encode(file_bytes).decode("utf-8")
 
+    # Buat nama file unik yang bersih dari spasi atau simbol aneh
+    file_ext = (
+        uploaded_file.name.split(".")[-1]
+        if "." in uploaded_file.name
+        else "jpg"
+    )
+    clean_filename = f"img_{uuid.uuid4().hex[:8]}.{file_ext}"
+
     payload = {
         "key": api_key,
         "image": base64_image,
-        "name": uploaded_file.name,
+        "name": clean_filename,
     }
 
     res = requests.post(url, data=payload, timeout=30)
