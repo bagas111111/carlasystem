@@ -93,66 +93,70 @@ def render_wms_stock_cud():
     current_qty = get_current_stock(con, company_id, chosen_warehouse_id, chosen_item_id)
     st.info(f"📊 Stok Saat Ini di Gudang Terpilih: **{current_qty}**")
 
-    with st.form("form_add_stock_log", clear_on_submit=True):
-      col3, col4 = st.columns(2)
-      with col3:
-        transaction_type = st.selectbox(
-            "Jenis Transaksi Mutasi *",
-            ["IN (Barang Masuk)", "OUT (Barang Keluar)", "ADJUSTMENT (Opname / Koreksi Stok)"],
-        )
-      with col4:
-        clean_type_preview = "IN" if "IN" in transaction_type else ("OUT" if "OUT" in transaction_type else "ADJUSTMENT")
-        
-        # Jika Adjustment, izinkan angka negatif (-) atau positif (+)
-        if clean_type_preview == "ADJUSTMENT":
-          quantity = st.number_input(
-              "Kuantitas Adjustment (+ / -) *", 
-              step=1, 
-              value=0, 
-              min_value=-999999,
-              help="Isi angka positif (cth: 10) untuk menambah, atau negatif (cth: -4) untuk mengurangi."
-          )
-        else:
-          quantity = st.number_input("Kuantitas (Quantity) *", step=1, value=1, min_value=1)
+    # PILIHAN JENIS TRANSAKSI & BIN LOKASI (DITARUH DI LUAR FORM AGAR REAKTIF SANGAT INTERAKTIF)
+    col3, col4 = st.columns(2)
+    with col3:
+      transaction_type = st.selectbox(
+          "Jenis Transaksi Mutasi *",
+          ["IN (Barang Masuk)", "OUT (Barang Keluar)", "ADJUSTMENT (Opname / Koreksi Stok)"],
+          key="add_trans_type"
+      )
+      clean_type_preview = "IN" if "IN" in transaction_type else ("OUT" if "OUT" in transaction_type else "ADJUSTMENT")
 
-      # PILIHAN METODE BIN LOKASI (FIX vs FREE)
-      st.markdown("##### 📍 Pengaturan Lokasi Rak / Bin")
+    with col4:
       bin_mode = st.radio(
-          "Pilih Metode Bin Lokasi",
+          "Pilih Metode Bin Lokasi *",
           ["Fix Bin (Mengikuti Master Barang)", "Free Bin (Bebas / Multi-Lokasi)"],
-          horizontal=True,
+          key="add_bin_mode"
       )
 
+    final_bin_location = None
+
+    if bin_mode == "Fix Bin (Mengikuti Master Barang)":
+      if default_master_bin:
+        st.success(f"📍 Menggunakan Bin Fix Master Barang: **{default_master_bin}**")
+      else:
+        st.warning("⚠️ Master barang ini belum memiliki Bin Lokasi default.")
       final_bin_location = None
-
-      if bin_mode == "Fix Bin (Mengikuti Master Barang)":
-        if default_master_bin:
-          st.success(f"📍 Menggunakan Bin Fix Master Barang: **{default_master_bin}**")
+    
+    else: # Free Bin Mode
+      st.markdown("---")
+      st.markdown("##### 📍 Input Rak / Bin Lokasi (Free Bin)")
+      if clean_type_preview == "IN":
+        final_bin_location = st.text_input(
+            "Ketik Lokasi Rak / Bin Tujuan Masuk *",
+            placeholder="Cth: Rak-A1-03 atau Zona-Transit",
+            key="input_free_bin_in"
+        )
+      else: # OUT atau ADJUSTMENT mengambil dari bin yang masih aktif ada stoknya
+        active_bins = get_active_bins(con, company_id, chosen_warehouse_id, chosen_item_id)
+        if not active_bins:
+          st.error("❌ Tidak ada bin/rak aktif yang memiliki stok untuk dikeluarkan!")
+          bin_options_list = {}
         else:
-          st.warning("⚠️ Master barang ini belum memiliki Bin Lokasi default.")
-        final_bin_location = None 
-      
-      else: # Free Bin Mode
-        if clean_type_preview == "IN":
-          final_bin_location = st.text_input(
-              "Ketik Lokasi Rak / Bin Tujuan Masuk *",
-              placeholder="Cth: Rak-A1-03 atau Zona-Transit"
-          )
-        else: # OUT atau ADJUSTMENT mengambil dari bin yang masih aktif ada stoknya
-          active_bins = get_active_bins(con, company_id, chosen_warehouse_id, chosen_item_id)
-          if not active_bins:
-            st.error("❌ Tidak ada bin/rak aktif yang memiliki stok untuk dikeluarkan!")
-            bin_options_list = {}
-          else:
-            bin_options_list = {f"{b[0]} (Stok Tersedia: {b[1]})": b[0] for b in active_bins}
-          
-          if active_bins:
-            selected_bin_label = st.selectbox("Pilih Bin Asal Barang *", list(bin_options_list.keys()))
-            final_bin_location = bin_options_list[selected_bin_label]
-          else:
-            final_bin_location = None
+          bin_options_list = {f"{b[0]} (Stok Tersedia: {b[1]})": b[0] for b in active_bins}
+        
+        if active_bins:
+          selected_bin_label = st.selectbox("Pilih Bin Asal Barang *", list(bin_options_list.keys()), key="select_free_bin_out")
+          final_bin_location = bin_options_list[selected_bin_label]
+        else:
+          final_bin_location = None
 
-      st.divider()
+    st.markdown("---")
+
+    # BLOK FORM UTAMA UNTUK INPUT DETAIL DAN SUBMIT
+    with st.form("form_add_stock_log", clear_on_submit=True):
+      if clean_type_preview == "ADJUSTMENT":
+        quantity = st.number_input(
+            "Kuantitas Adjustment (+ / -) *", 
+            step=1, 
+            value=0, 
+            min_value=-999999,
+            help="Isi angka positif (cth: 10) untuk menambah, atau negatif (cth: -4) untuk mengurangi."
+        )
+      else:
+        quantity = st.number_input("Kuantitas (Quantity) *", step=1, value=1, min_value=1)
+
       col5, col6 = st.columns(2)
       with col5:
         t_date = st.date_input("Tanggal Transaksi *", value=datetime.today())
