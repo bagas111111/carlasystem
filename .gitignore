@@ -3,6 +3,7 @@ venv/
 env/
 __pycache__/
 .env
+.streamlit/secrets.toml
 other/
 data_karyawan.csv
 rekap/absen/raw_checkin.csv
@@ -10,6 +11,8 @@ rekap/absen/Hasil_Rekap_Absensi.xlsx
 rekap/absen/data_leave.csv
 rekap/absen/data_karyawan.csv
 data_karyawan.csv
+wms_items.csv
+import_items.py
 
 # SQLite Database dan file sementaranya
 *.db

@@ -260,9 +260,14 @@ def render_wms_items_list():
         chosen_sku = selected_preview_sku.split(" - ")[0]
         img_row = df[df["SKU"] == chosen_sku].iloc[0]
         img_url = img_row["Image URL"]
-        if img_url and str(img_url).strip():
-          st.image(img_url, width=300, caption=f"SKU: {chosen_sku}")
+        
+        # Pengaman ekstra agar tidak crash jika image_url kosong, None, atau tidak valid
+        if img_url and str(img_url).strip().lower().startswith(("http://", "https://")):
+          try:
+            st.image(str(img_url).strip(), width=300, caption=f"SKU: {chosen_sku}")
+          except Exception:
+            st.info("ℹ️ (Gagal memuat gambar dari URL)")
         else:
-          st.info("ℹ️ Tidak ada URL gambar untuk barang ini.")
+          st.info("ℹ️ Tidak ada URL gambar yang valid untuk barang ini.")
   else:
     st.warning("⚠️ Tidak ada data barang yang ditemukan sesuai filter.")
